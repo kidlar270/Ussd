@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nangina Girls School - USSD Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.0/lucide.min.js"></script>
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <!-- Firebase Firestore -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+        body { font-family: 'Inter', sans-serif; background: #f0f2f5; }
+        .phone-frame {
+            width: 320px;
+            height: 600px;
+            background: #1a1a1a;
+            border-radius: 40px;
+            padding: 12px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: relative;
+            border: 4px solid #333;
+        }
+        .screen {
+            width: 100%;
+            height: 100%;
+            background: white;
+            border-radius: 30px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .dial-pad button {
+            transition: all 0.1s;
+        }
+        .dial-pad button:active {
+            background-color: #e5e7eb;
+            transform: scale(0.95);
+        }
+        .ussd-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85%;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2);
+            z-index: 50;
+            padding: 1.5rem;
+        }
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 40;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <div class="phone-frame">
+        <div class="screen">
+            <!-- Status Bar -->
+            <div class="flex justify-between items-center px-6 py-2 bg-white text-xs font-bold">
+                <span>9:41</span>
+                <div class="flex gap-1">
+                    <i data-lucide="signal" class="w-3 h-3"></i>
+                    <i data-lucide="wifi" class="w-3 h-3"></i>
+                    <i data-lucide="battery" class="w-3 h-3"></i>
+                </div>
+            </div>
+
+            <!-- Dialer App Content -->
+            <div id="dialer-ui" class="flex-grow flex flex-col p-4">
+                <div class="flex-grow flex items-center justify-center">
+                    <input type="text" id="dial-display" readonly 
+                        class="text-4xl text-center w-full outline-none bg-transparent text-slate-800 font-medium" 
+                        placeholder=" ">
+                </div>
+
+                <!-- Dial Pad -->
+                <div class="dial-pad grid grid-cols-3 gap-4 mb-8">
+                    <button onclick="press('1')" class="h-16 w-16 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-2xl font-semibold">1</button>
+                    <button onclick="press('2')" class="h-16 w-16 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-2xl font-semibold">2</button>
+                    <button onclick="press('3')" class="h-16 w-16 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-2xl font-semibold">3</button>
+                    <button onclick="press('4')" class="h-16 w-16 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-2xl font-semibold">4</button>
+                    <button onclick="press('5')" class="h-16 w-16 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-2xl font-semibold">5</button>
+                    <button onclick="press('6')" class="h-16 w-16 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-2xl font-semibold">6</button>
+                    <button onclick="press('7')" class="h-16 w-16 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-2xl font-semibold">7</button>
+                    <button onclick="press('8')" class="h-16 w-16 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-2xl font-semibold">8</button>
+                    <button onclick="press('9')" class="h-16 w-16 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-2xl font-semibold">9</button>
+                    <button onclick="press('*')" class="h-16 w-16 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-2xl font-semibold">*</button>
+                    <button onclick="press('0')" class="h-16 w-16 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-2xl font-semibold">0</button>
+                    <button onclick="press('#')" class="h-16 w-16 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-2xl font-semibold">#</button>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex justify-around items-center mb-8">
+                    <div class="w-16"></div>
+                    <button onclick="dial()" class="h-16 w-16 rounded-full bg-green-500 flex items-center justify-center text-white shadow-lg">
+                        <i data-lucide="phone" class="fill-current"></i>
+                    </button>
+                    <button onclick="backspace()" class="h-16 w-16 flex items-center justify-center text-slate-400">
+                        <i data-lucide="delete"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- USSD System Overlay -->
+            <div id="ussd-overlay" class="overlay hidden"></div>
+            <div id="ussd-container" class="ussd-modal hidden">
+                <p id="ussd-text" class="text-sm text-gray-700 mb-4 whitespace-pre-wrap font-medium leading-relaxed"></p>
+                <input type="text" id="ussd-input" class="w-full border-b-2 border-green-500 outline-none mb-4 py-1 text-sm">
+                <div class="flex justify-end gap-6 text-green-600 font-bold text-sm tracking-wider">
+                    <button id="ussd-cancel-btn" onclick="cancelUSSD()">CANCEL</button>
+                    <button id="ussd-send-btn" onclick="handleUSSDAction()">SEND</button>
+                </div>
+            </div>
+
+            <!-- Loader -->
+            <div id="ussd-loader" class="ussd-modal hidden text-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-2"></div>
+                <p class="text-xs text-gray-500">Processing request...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * FIREBASE CONNECTION GUIDE:
+         * 1. Go to Firebase Console -> Project Settings.
+         * 2. Under 'General', find 'Your apps'.
+         * 3. Copy the 'firebaseConfig' object and paste it below.
+         * 4. Make sure 'Cloud Firestore' is enabled in your Firebase Studio.
+         */
+        const firebaseConfig = {
+  apiKey: "AIzaSyCvaPpq5SnJlZTDPxeuy-rc6n0g-YcfxRk",
+  authDomain: "ussd254-c05af.firebaseapp.com",
+  projectId: "ussd254-c05af",
+  storageBucket: "ussd254-c05af.firebasestorage.app",
+  messagingSenderId: "807141930648",
+  appId: "1:807141930648:web:8861a029a71a2b7da502ed",
+  measurementId: "G-G3XT60YGC5"
+};
+
+        // Initialize Firebase safely
+        if (!firebase.apps.length && firebaseConfig.apiKey !== "PASTE_YOUR_API_KEY_HERE") {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = (firebase.apps.length) ? firebase.firestore() : null;
+
+        // --- USSD State Management ---
+        let dialString = "";
+        let ussdState = "IDLE"; 
+        let studentData = { name: "", admission: "" };
+
+        const dialDisplay = document.getElementById('dial-display');
+        const ussdContainer = document.getElementById('ussd-container');
+        const ussdOverlay = document.getElementById('ussd-overlay');
+        const ussdText = document.getElementById('ussd-text');
+        const ussdInput = document.getElementById('ussd-input');
+        const ussdLoader = document.getElementById('ussd-loader');
+
+        function press(key) {
+            dialString += key;
+            dialDisplay.value = dialString;
+        }
+
+        function backspace() {
+            dialString = dialString.slice(0, -1);
+            dialDisplay.value = dialString;
+        }
+
+        function dial() {
+            if (dialString === "*254#") {
+                showMenu();
+            } else if (dialString.length > 0) {
+                showUSSD("Connection problem or invalid MMI code.", false);
+            }
+        }
+
+        function showUSSD(text, showInput = true) {
+            ussdText.innerText = text;
+            ussdInput.style.display = showInput ? "block" : "none";
+            ussdOverlay.classList.remove('hidden');
+            ussdContainer.classList.remove('hidden');
+            if(showInput) {
+                ussdInput.value = "";
+                ussdInput.focus();
+            }
+        }
+
+        function cancelUSSD() {
+            ussdOverlay.classList.add('hidden');
+            ussdContainer.classList.add('hidden');
+            ussdLoader.classList.add('hidden');
+            ussdState = "IDLE";
+            dialString = "";
+            dialDisplay.value = "";
+        }
+
+        function showMenu(errorMessage = "") {
+            ussdState = "MENU";
+            const header = errorMessage ? `${errorMessage}\n\n` : "";
+            showUSSD(`${header}Welcome to Nangina Girls School Portal\n1. Register New Student\n2. Search Student Record\n3. About Our School\n4. Delete Student Record\n\n0. Exit Portal`, true);
+        }
+
+        async function handleUSSDAction() {
+            const input = ussdInput.value.trim();
+            
+            // Universal "Wrong option/Go back" logic
+            if (input === "0") {
+                if (ussdState === "MENU") {
+                    cancelUSSD();
+                } else {
+                    showMenu();
+                }
+                return;
+            }
+
+            // Logic for different states
+            switch (ussdState) {
+                case "MENU":
+                    if (input === "1") {
+                        ussdState = "REG_NAME";
+                        showUSSD("REGISTRATION: Step 1/2\nEnter Full Student Name:\n\n0. Back to Main Menu", true);
+                    } else if (input === "2") {
+                        ussdState = "SEARCH_QUERY";
+                        showUSSD("SEARCH: Enter Student Admission Number:\n\n0. Back to Main Menu", true);
+                    } else if (input === "3") {
+                        ussdState = "INFO";
+                        showUSSD("Nangina Girls Secondary School\nP.O. Box 24, Funyula.\n'Excellence in Academic and Character.'\n\n0. Back to Main Menu", true);
+                    } else if (input === "4") {
+                        ussdState = "DEL_QUERY";
+                        showUSSD("DELETE: Enter Admission Number to be removed:\n(Warning: This cannot be undone)\n\n0. Back to Main Menu", true);
+                    } else {
+                        showMenu("Invalid Selection! Please try again.");
+                    }
+                    break;
+
+                case "REG_NAME":
+                    if (input.length < 3) {
+                        showUSSD("Error: Name too short.\nEnter Full Student Name:\n\n0. Back", true);
+                    } else {
+                        studentData.name = input;
+                        ussdState = "REG_ADM";
+                        showUSSD(`Name: ${input}\nStep 2/2: Enter Admission Number:\n\n0. Back`, true);
+                    }
+                    break;
+
+                case "REG_ADM":
+                    if (!input) {
+                        showUSSD(`Name: ${studentData.name}\nError: Adm Number required.\nEnter Admission Number:`, true);
+                    } else {
+                        studentData.admission = input;
+                        saveRecord();
+                    }
+                    break;
+
+                case "SEARCH_QUERY":
+                    if (!input) return;
+                    searchRecord(input);
+                    break;
+
+                case "DEL_QUERY":
+                    if (!input) return;
+                    deleteRecord(input);
+                    break;
+
+                case "INFO":
+                case "RESULT_VIEW":
+                    showMenu();
+                    break;
+            }
+        }
+
+        // --- Database Actions ---
+
+        async function saveRecord() {
+            if (!db) return showUSSD("Error: Firebase not connected.\nCheck your config script.", false);
+            
+            toggleLoader(true);
+            try {
+                await db.collection("students").add({
+                    studentName: studentData.name,
+                    admissionNumber: studentData.admission,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                toggleLoader(false);
+                ussdState = "RESULT_VIEW";
+                showUSSD(`Success!\nStudent: ${studentData.name}\nAdm: ${studentData.admission} has been registered.\n\n0. Back to Menu`, true);
+            } catch (err) {
+                toggleLoader(false);
+                showUSSD("System Busy. Failed to save record. Try again later.", false);
+            }
+        }
+
+        async function searchRecord(adm) {
+            if (!db) return showUSSD("Error: Firebase not connected.", false);
+
+            toggleLoader(true);
+            try {
+                const snapshot = await db.collection("students")
+                    .where("admissionNumber", "==", adm)
+                    .get();
+                
+                toggleLoader(false);
+                ussdState = "RESULT_VIEW";
+                if (snapshot.empty) {
+                    showUSSD(`No record found for Adm: ${adm}.\nPlease verify the number.\n\n0. Back to Menu`, true);
+                } else {
+                    const data = snapshot.docs[0].data();
+                    showUSSD(`Record Found:\nName: ${data.studentName}\nAdm: ${data.admissionNumber}\nRegistered: ${data.timestamp?.toDate().toLocaleDateString() || 'N/A'}\n\n0. Back to Menu`, true);
+                }
+            } catch (err) {
+                toggleLoader(false);
+                showUSSD("Error retrieving data.", false);
+            }
+        }
+
+        async function deleteRecord(adm) {
+            if (!db) return showUSSD("Error: Firebase not connected.", false);
+
+            toggleLoader(true);
+            try {
+                const snapshot = await db.collection("students")
+                    .where("admissionNumber", "==", adm)
+                    .get();
+
+                if (snapshot.empty) {
+                    toggleLoader(false);
+                    ussdState = "RESULT_VIEW";
+                    showUSSD(`Delete Failed: Admission ${adm} not found.\n\n0. Back to Menu`, true);
+                } else {
+                    const batch = db.batch();
+                    snapshot.forEach(doc => batch.delete(doc.ref));
+                    await batch.commit();
+                    toggleLoader(false);
+                    ussdState = "RESULT_VIEW";
+                    showUSSD(`Done! Student record for Adm ${adm} has been permanently deleted.\n\n0. Back to Menu`, true);
+                }
+            } catch (err) {
+                toggleLoader(false);
+                showUSSD("Deletion Error. Please check permissions.", false);
+            }
+        }
+
+        function toggleLoader(show) {
+            if (show) {
+                ussdContainer.classList.add('hidden');
+                ussdLoader.classList.remove('hidden');
+            } else {
+                ussdLoader.classList.add('hidden');
+                ussdContainer.classList.remove('hidden');
+            }
+        }
+
+        lucide.createIcons();
+    </script>
+</body>
+</html>
