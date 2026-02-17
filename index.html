@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nangina Girls School - USSD Portal</title>
+    <title>USSD Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.0/lucide.min.js"></script>
     <!-- Firebase App (the core Firebase SDK) -->
@@ -206,7 +206,7 @@
         function showMenu(errorMessage = "") {
             ussdState = "MENU";
             const header = errorMessage ? `${errorMessage}\n\n` : "";
-            showUSSD(`${header}Welcome to Nangina Girls School Portal\n1. Register New Student\n2. Search Student Record\n3. About Our School\n4. Delete Student Record\n\n0. Exit Portal`, true);
+            showUSSD(`${header}Welcome to Our School Portal\n1. Register New Student\n2. Search Student Record\n3. About Our School\n4. Delete Student Record\n\n0. Exit Portal`, true);
         }
 
         async function handleUSSDAction() {
