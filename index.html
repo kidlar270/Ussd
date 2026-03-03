@@ -23,6 +23,7 @@
             position: relative;
             border: 4px solid #333;
             margin: auto;
+            overflow: hidden;
         }
 
         @media (max-width: 480px) {
@@ -57,13 +58,14 @@
         }
 
         .app-icon {
-            @apply flex flex-col items-center justify-center gap-1 cursor-pointer transition-transform;
+            @apply flex flex-col items-center justify-center gap-1 cursor-pointer transition-all;
         }
-        .app-icon:active { transform: scale(0.9); }
+        .app-icon:hover .icon-box { transform: translateY(-2px); }
+        .app-icon:active .icon-box { transform: scale(0.9); }
         
         /* Box-like Icon Styling */
         .icon-box {
-            @apply w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg transition-all active:shadow-inner;
+            @apply w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg transition-all;
         }
 
         .ussd-modal {
@@ -86,17 +88,19 @@
             z-index: 90;
         }
 
+        .home-indicator-container {
+            @apply w-full pb-2 pt-1 flex justify-center cursor-pointer active:bg-slate-100 transition-colors;
+        }
+
         .home-indicator {
             width: 100px;
-            height: 4px;
+            height: 5px;
             background: #000;
-            border-radius: 2px;
-            margin: 12px auto;
-            opacity: 0.3;
-            cursor: pointer;
+            border-radius: 10px;
+            opacity: 0.2;
         }
         
-        .dark-indicator { background: #fff; opacity: 0.6; }
+        .dark-indicator { background: #fff; opacity: 0.5; }
 
         .hidden-app { display: none !important; }
 
@@ -124,19 +128,22 @@
             <!-- 1. HOME SCREEN VIEW -->
             <div id="view-home" class="flex-grow home-bg px-6 py-8 flex flex-col">
                 <div class="grid grid-cols-3 gap-y-10 gap-x-4 mt-8">
-                    <div class="app-icon" onclick="openApp('phone')">
+                    <!-- Clickable Phone App -->
+                    <div class="app-icon" id="app-phone-trigger">
                         <div class="icon-box bg-green-500 text-white">
                             <i data-lucide="phone" class="w-10 h-10 fill-current"></i>
                         </div>
                         <span class="text-[11px] text-white font-semibold mt-1">Phone</span>
                     </div>
-                    <div class="app-icon" onclick="openApp('messages')">
+                    <!-- Clickable Messages App -->
+                    <div class="app-icon" id="app-messages-trigger">
                         <div class="icon-box bg-blue-500 text-white">
                             <i data-lucide="message-circle" class="w-10 h-10 fill-current"></i>
                         </div>
                         <span class="text-[11px] text-white font-semibold mt-1">Messages</span>
                     </div>
-                    <div class="app-icon" onclick="openApp('school')">
+                    <!-- Clickable Portal App -->
+                    <div class="app-icon" id="app-portal-trigger">
                         <div class="icon-box bg-purple-600 text-white">
                             <i data-lucide="graduation-cap" class="w-10 h-10"></i>
                         </div>
@@ -144,8 +151,8 @@
                     </div>
                 </div>
                 
-                <div class="mt-auto">
-                    <div class="home-indicator dark-indicator" onclick="goHome()"></div>
+                <div class="mt-auto home-indicator-container" onclick="goHome()">
+                    <div class="home-indicator dark-indicator"></div>
                 </div>
             </div>
 
@@ -183,7 +190,9 @@
                         </button>
                     </div>
                 </div>
-                <div class="home-indicator" onclick="goHome()"></div>
+                <div class="home-indicator-container" onclick="goHome()">
+                    <div class="home-indicator"></div>
+                </div>
             </div>
 
             <!-- 3. MESSAGES APP VIEW -->
@@ -199,14 +208,16 @@
                         </div>
                         <div class="flex-grow">
                             <div class="flex justify-between">
-                                <span class="font-bold text-sm">Service Provider</span>
+                                <span class="font-bold text-sm">System</span>
                                 <span class="text-[11px] text-slate-400">Just now</span>
                             </div>
-                            <p class="text-sm text-slate-500 truncate">Welcome to your new mobile portal...</p>
+                            <p class="text-sm text-slate-500 truncate">Welcome to Busiada Girls Mobile Portal.</p>
                         </div>
                     </div>
                 </div>
-                <div class="home-indicator" onclick="goHome()"></div>
+                <div class="home-indicator-container" onclick="goHome()">
+                    <div class="home-indicator"></div>
+                </div>
             </div>
 
             <!-- USSD System Overlay (Global) -->
@@ -275,7 +286,11 @@
         onAuthStateChanged(auth, user => currentUser = user);
         init();
 
-        // UI Helpers
+        // App Trigger Event Listeners
+        document.getElementById('app-phone-trigger').addEventListener('click', () => openApp('phone'));
+        document.getElementById('app-messages-trigger').addEventListener('click', () => openApp('messages'));
+        document.getElementById('app-portal-trigger').addEventListener('click', () => openApp('school'));
+
         window.openApp = (appId) => {
             Object.values(views).forEach(v => v.classList.add('hidden-app'));
             if (appId === 'phone') {
@@ -288,6 +303,8 @@
                 statusBar.classList.add('text-black');
             } else if (appId === 'school') {
                 views.phone.classList.remove('hidden-app');
+                statusBar.classList.remove('text-white');
+                statusBar.classList.add('text-black');
                 dialString = "*254#";
                 dialDisplay.value = dialString;
                 dial();
@@ -403,7 +420,8 @@
         // Clock
         setInterval(() => {
             const n = new Date();
-            document.getElementById('clock').innerText = n.getHours().toString().padStart(2, '0') + ":" + n.getMinutes().toString().padStart(2, '0');
+            const clockEl = document.getElementById('clock');
+            if (clockEl) clockEl.innerText = n.getHours().toString().padStart(2, '0') + ":" + n.getMinutes().toString().padStart(2, '0');
         }, 1000);
 
         lucide.createIcons();
