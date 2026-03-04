@@ -12,44 +12,46 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background: #0a0a0a;
+            background: #050505;
+            margin: 0;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            margin: 0;
             overflow: hidden;
             touch-action: manipulation;
         }
 
         /* Responsive Frame Logic */
         .phone-frame {
-            width: 360px;
-            height: 740px;
+            width: 100%;
+            height: 100vh;
             background: #000;
-            border-radius: 50px;
-            border: 12px solid #222;
             position: relative;
-            box-shadow: 0 50px 100px -20px rgba(0,0,0,0.8);
             overflow: hidden;
             user-select: none;
-            transition: all 0.3s ease;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        @media (max-width: 450px) {
+        /* Desktop Mode: Mimic a floating device */
+        @media (min-width: 1024px) {
             .phone-frame {
-                width: 100vw;
-                height: 100vh;
-                border: none;
-                border-radius: 0;
+                width: 400px;
+                height: 820px;
+                border-radius: 44px;
+                border: 12px solid #1a1a1a;
+                box-shadow: 0 50px 100px -20px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.1);
+            }
+            body {
+                background: radial-gradient(circle at center, #1a1a1a 0%, #050505 100%);
             }
         }
 
-        /* COLORFUL ANIMATED BACKGROUND */
+        /* Animated Gradient Background */
         .animated-bg {
             position: absolute;
             inset: 0;
-            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background: linear-gradient(-45deg, #1e1b4b, #312e81, #1e3a8a, #1e40af);
             background-size: 400% 400%;
             animation: gradientBG 15s ease infinite;
             z-index: 1;
@@ -61,11 +63,10 @@
             100% { background-position: 0% 50%; }
         }
 
-        /* Glass Overlay for depth */
         .bg-overlay {
             position: absolute;
             inset: 0;
-            background: radial-gradient(circle at top, rgba(255,255,255,0.1) 0%, transparent 70%);
+            background: radial-gradient(circle at 50% -20%, rgba(255,255,255,0.1) 0%, transparent 80%);
             z-index: 2;
         }
 
@@ -82,24 +83,23 @@
             font-size: 14px;
             font-weight: 600;
             color: white;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
         }
 
         .dynamic-island {
-            width: 110px;
-            height: 30px;
+            width: 120px;
+            height: 32px;
             background: black;
             border-radius: 20px;
             position: absolute;
             left: 50%;
             transform: translateX(-50%);
-            top: 8px;
+            top: 6px;
             transition: all 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
             z-index: 1001;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
 
         .screen {
@@ -111,20 +111,21 @@
         .home-screen {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            grid-template-rows: repeat(6, 1fr);
-            padding: 70px 15px 100px 15px;
-            gap: 15px;
+            grid-auto-rows: min-content;
+            padding: 80px 20px 120px 20px;
+            gap: 20px;
+            height: 100%;
+            overflow-y: auto;
         }
 
         .app-view {
             position: absolute;
             inset: 0;
-            background: #f4f4f7;
+            background: #ffffff;
             z-index: 500;
             transform: translateY(100%);
-            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
             padding-top: 44px;
-            color: black;
             display: flex;
             flex-direction: column;
         }
@@ -136,135 +137,178 @@
             flex-direction: column;
             align-items: center;
             cursor: pointer;
-            transition: transform 0.1s;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        .app-icon:active { transform: scale(0.9); }
+        .app-icon:active { transform: scale(0.85); }
 
         .icon-shape {
-            width: 60px;
-            height: 60px;
-            border-radius: 14px;
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
             display: flex;
             justify-content: center;
             align-items: center;
-            margin-bottom: 6px;
-            box-shadow: 0 8px 15px rgba(0,0,0,0.15);
-            font-size: 28px;
+            margin-bottom: 8px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            font-size: 30px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
         }
 
         .badge {
             position: absolute;
-            top: -5px;
-            right: -5px;
-            background: #ef4444;
+            top: -4px;
+            right: -4px;
+            background: #ff3b30;
             color: white;
-            font-size: 10px;
+            font-size: 11px;
             font-weight: bold;
-            width: 22px;
+            min-width: 22px;
             height: 22px;
-            border-radius: 50%;
+            border-radius: 11px;
             display: none;
             align-items: center;
             justify-content: center;
-            border: 2px solid rgba(255,255,255,0.8);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border: 2px solid #fff;
+            padding: 0 4px;
         }
 
         .dock {
             position: absolute;
-            bottom: 25px; left: 15px; right: 15px;
-            height: 85px;
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(30px);
-            -webkit-backdrop-filter: blur(30px);
-            border-radius: 30px;
-            display: flex; justify-content: space-evenly; align-items: center;
+            bottom: 30px; 
+            left: 20px; 
+            right: 20px;
+            height: 88px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border-radius: 32px;
+            display: flex; 
+            justify-content: space-evenly; 
+            align-items: center;
             z-index: 20;
-            border: 1px solid rgba(255,255,255,0.2);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.1);
         }
 
         .home-indicator {
-            position: absolute; bottom: 8px; left: 50%;
+            position: absolute; 
+            bottom: 10px; 
+            left: 50%;
             transform: translateX(-50%);
-            width: 120px; height: 5px; background: white; border-radius: 10px;
-            z-index: 2000; cursor: pointer; mix-blend-mode: difference;
+            width: 120px; 
+            height: 5px; 
+            background: rgba(255,255,255,0.5); 
+            border-radius: 10px;
+            z-index: 2000; 
+            cursor: pointer;
         }
 
         .ussd-modal {
-            position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%);
-            width: 88%; background: #fff; border-radius: 18px;
-            box-shadow: 0 30px 60px rgba(0,0,0,0.5); z-index: 1001; padding: 1.5rem;
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%);
+            width: 90%; 
+            background: #fff; 
+            border-radius: 24px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.4); 
+            z-index: 1001; 
+            padding: 24px;
         }
-        .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; backdrop-filter: blur(4px); }
-
-        .msg-container { display: flex; flex-direction: column; width: 100%; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        .msg-bubble { max-width: 90%; padding: 14px 18px; border-radius: 20px; font-size: 14px; position: relative; background: #e9e9eb; line-height: 1.5; color: #1a1a1a; }
-        #messageList { overflow-y: auto; flex-grow: 1; padding: 20px; display: flex; flex-direction: column; }
         
-        .sender-name { font-size: 10px; font-weight: 800; color: #999; margin-left: 10px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.08em; }
-        
-        .delete-msg-btn { color: #ef4444; font-size: 12px; margin-left: 12px; margin-top: 8px; font-weight: 700; display: none; }
-        .editing-messages .delete-msg-btn { display: inline-block; }
+        .overlay { 
+            position: absolute; 
+            inset: 0; 
+            background: rgba(0,0,0,0.4); 
+            z-index: 1000; 
+            backdrop-filter: blur(8px); 
+        }
 
+        .msg-bubble { 
+            max-width: 85%; 
+            padding: 12px 16px; 
+            border-radius: 18px; 
+            font-size: 14px; 
+            background: #f2f2f7; 
+            color: #000;
+        }
+        
         .dial-btn {
-            height: 72px; width: 72px; border-radius: 9999px; background: #f1f5f9;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-size: 1.6rem; font-weight: 600; transition: all 0.1s;
+            height: 70px; 
+            width: 70px; 
+            border-radius: 50%; 
+            background: #f2f2f7;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            font-size: 24px; 
+            font-weight: 400; 
+            transition: all 0.2s;
         }
-        .dial-btn:active { background: #cbd5e1; transform: scale(0.95); }
-        .dial-btn span { font-size: 10px; font-weight: 500; color: #94a3b8; margin-top: -2px; }
+        .dial-btn:active { background: #d1d1d6; transform: scale(0.92); }
+        .dial-btn span { font-size: 10px; color: #8e8e93; text-transform: uppercase; }
+
+        /* Scrollbar styles for the app lists */
+        #messageList::-webkit-scrollbar { width: 0; background: transparent; }
     </style>
 </head>
 <body>
 
     <div class="phone-frame">
-        <!-- Colorful Background Layers -->
         <div class="animated-bg"></div>
         <div class="bg-overlay"></div>
 
         <!-- Status Bar -->
         <div class="status-bar">
-            <span id="clock">--:--</span>
+            <span id="clock" class="ml-4">--:--</span>
             <div class="dynamic-island" id="island"></div>
-            <div class="flex items-center space-x-1.5">
-                <i data-lucide="signal" class="w-3.5 h-3.5 text-white"></i>
-                <i data-lucide="wifi" class="w-3.5 h-3.5 text-white"></i>
-                <div class="w-6 h-3 border border-white/50 rounded-sm relative p-px">
-                    <div class="bg-white h-full w-4/5 rounded-px"></div>
+            <div class="flex items-center space-x-2 mr-4">
+                <i data-lucide="signal" class="w-4 h-4"></i>
+                <i data-lucide="wifi" class="w-4 h-4"></i>
+                <div class="w-6 h-3 border border-white rounded-sm p-px">
+                    <div class="bg-white h-full w-3/4"></div>
                 </div>
             </div>
         </div>
 
         <!-- Home Screen -->
         <div class="screen home-screen" id="homeScreen">
-            <div class="app-icon" onclick="openApp('Camera')"><div class="icon-shape bg-zinc-800">📷</div><span class="text-[11px] text-white font-medium drop-shadow-md">Camera</span></div>
-            <div class="app-icon" onclick="openApp('Photos')"><div class="icon-shape bg-white">🖼️</div><span class="text-[11px] text-white font-medium drop-shadow-md">Photos</span></div>
-            <div class="app-icon" onclick="openApp('Maps')"><div class="icon-shape bg-emerald-500">🗺️</div><span class="text-[11px] text-white font-medium drop-shadow-md">Maps</span></div>
-            <div class="app-icon" onclick="openApp('Notes')"><div class="icon-shape bg-yellow-400">📝</div><span class="text-[11px] text-white font-medium drop-shadow-md">Notes</span></div>
-            <div class="app-icon" onclick="openApp('Settings')"><div class="icon-shape bg-gray-500">⚙️</div><span class="text-[11px] text-white font-medium drop-shadow-md">Settings</span></div>
+            <div class="app-icon" onclick="openApp('Camera')"><div class="icon-shape">📸</div><span class="text-[12px] text-white">Camera</span></div>
+            <div class="app-icon" onclick="openApp('Photos')"><div class="icon-shape">🎨</div><span class="text-[12px] text-white">Photos</span></div>
+            <div class="app-icon" onclick="openApp('Maps')"><div class="icon-shape">📍</div><span class="text-[12px] text-white">Maps</span></div>
+            <div class="app-icon" onclick="openApp('Notes')"><div class="icon-shape">📝</div><span class="text-[12px] text-white">Notes</span></div>
+            <div class="app-icon" onclick="openApp('Files')"><div class="icon-shape">📂</div><span class="text-[12px] text-white">Files</span></div>
+            <div class="app-icon" onclick="openApp('Settings')"><div class="icon-shape">⚙️</div><span class="text-[12px] text-white">Settings</span></div>
 
             <div class="dock">
-                <div class="icon-shape bg-green-500 !m-0" onclick="showAppView('phoneApp')">📞</div>
-                <div class="icon-shape bg-blue-500 !m-0 relative" onclick="showAppView('messageApp')">
-                    💬
+                <div class="app-icon" onclick="showAppView('phoneApp')">
+                    <div class="icon-shape bg-green-500 !m-0 !w-14 !h-14">📞</div>
+                </div>
+                <div class="app-icon relative" onclick="showAppView('messageApp')">
+                    <div class="icon-shape bg-blue-500 !m-0 !w-14 !h-14">💬</div>
                     <div id="msgBadge" class="badge">0</div>
                 </div>
-                <div class="icon-shape bg-white !m-0" onclick="openApp('Browser')">🌐</div>
-                <div class="icon-shape bg-red-500 !m-0" onclick="openApp('Music')">🎵</div>
+                <div class="app-icon" onclick="openApp('Browser')">
+                    <div class="icon-shape bg-white !m-0 !w-14 !h-14">🌐</div>
+                </div>
+                <div class="app-icon" onclick="openApp('Music')">
+                    <div class="icon-shape bg-pink-500 !m-0 !w-14 !h-14">🎵</div>
+                </div>
             </div>
         </div>
 
         <!-- Phone App -->
-        <div class="app-view bg-white" id="phoneApp">
-            <div class="flex items-center text-blue-500 p-4 pt-6 font-semibold cursor-pointer" onclick="goHome()">
-                <i data-lucide="chevron-left" class="w-6 h-6"></i> Home
+        <div class="app-view" id="phoneApp">
+            <div class="p-6 flex justify-between items-center">
+                <h1 class="text-3xl font-bold">Phone</h1>
+                <button onclick="goHome()" class="text-blue-500 font-medium">Cancel</button>
             </div>
-            <div class="flex-grow flex flex-col p-4">
-                <div class="h-28 flex items-center justify-center">
-                    <input type="text" id="dial-display" readonly class="text-4xl text-center w-full bg-transparent text-slate-800 tracking-wider font-light" placeholder=" ">
-                </div>
-                <div class="grid grid-cols-3 gap-y-6 gap-x-4 mb-8 px-6">
+            <div class="flex-grow flex flex-col items-center">
+                <input type="text" id="dial-display" readonly class="text-4xl text-center w-full bg-transparent outline-none mb-8 py-4 h-20" placeholder="">
+                
+                <div class="grid grid-cols-3 gap-6 mb-8">
                     <button onclick="press('1')" class="dial-btn">1</button>
                     <button onclick="press('2')" class="dial-btn">2<span>ABC</span></button>
                     <button onclick="press('3')" class="dial-btn">3<span>DEF</span></button>
@@ -278,47 +322,47 @@
                     <button onclick="press('0')" class="dial-btn">0<span>+</span></button>
                     <button onclick="press('#')" class="dial-btn">#</button>
                 </div>
-                <div class="flex justify-center items-center relative mb-8">
-                    <button onclick="dial()" class="h-18 w-18 p-5 rounded-full bg-green-500 text-white flex items-center justify-center shadow-xl active:scale-95 transition-all"><i data-lucide="phone" class="fill-current"></i></button>
-                    <button onclick="backspace()" class="absolute right-12 text-slate-400 p-2 active:text-slate-600"><i data-lucide="delete"></i></button>
+
+                <div class="flex items-center space-x-12">
+                    <div class="w-12"></div>
+                    <button onclick="dial()" class="h-16 w-16 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform">
+                        <i data-lucide="phone" class="fill-current w-8 h-8"></i>
+                    </button>
+                    <button onclick="backspace()" class="w-12 text-gray-400 active:text-black">
+                        <i data-lucide="delete"></i>
+                    </button>
                 </div>
             </div>
 
-            <!-- USSD Screens -->
+            <!-- USSD UI -->
             <div id="ussd-overlay" class="overlay hidden"></div>
             <div id="ussd-container" class="ussd-modal hidden">
-                <p id="ussd-text" class="text-sm text-gray-800 mb-6 whitespace-pre-wrap font-semibold leading-relaxed"></p>
-                <input type="text" id="ussd-input" class="w-full border-b-2 border-green-500 outline-none mb-6 py-2 text-lg font-bold text-center" autofocus>
-                <div class="flex justify-between items-center px-1">
-                    <button onclick="cancelUSSD()" class="text-gray-400 font-bold text-sm tracking-wide hover:text-gray-600 transition-colors">CANCEL</button>
-                    <button onclick="handleUSSDAction()" class="text-green-600 font-bold text-sm tracking-wide bg-green-50 px-5 py-2.5 rounded-xl active:scale-95 transition-transform">SEND</button>
+                <p id="ussd-text" class="text-sm font-medium text-gray-700 mb-6 leading-relaxed"></p>
+                <input type="text" id="ussd-input" class="w-full border-b-2 border-blue-500 py-2 text-xl font-bold mb-6 outline-none">
+                <div class="flex justify-end space-x-6">
+                    <button onclick="cancelUSSD()" class="text-gray-400 font-bold">CANCEL</button>
+                    <button onclick="handleUSSDAction()" class="text-blue-600 font-bold">SEND</button>
                 </div>
-            </div>
-            <div id="ussd-loader" class="ussd-modal hidden text-center py-10">
-                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
-                <p class="text-sm text-gray-500 font-semibold">Handshaking with server...</p>
             </div>
         </div>
 
         <!-- Messages App -->
-        <div class="app-view bg-white" id="messageApp">
-            <div class="flex justify-between items-center bg-white sticky top-0 border-b p-4 pt-6">
-                <div class="text-blue-500 flex items-center cursor-pointer font-semibold" onclick="goHome(); markMessagesRead();">
-                    <i data-lucide="chevron-left" class="w-6 h-6"></i> Messages
-                </div>
-                <div class="flex items-center space-x-3">
-                    <button id="editMsgBtn" onclick="toggleEditMessages()" class="text-blue-500 text-sm font-bold">Edit</button>
-                    <button onclick="clearAllMessages()" class="p-1.5 text-red-500 hover:bg-red-50 rounded-full transition-colors"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+        <div class="app-view" id="messageApp">
+            <div class="p-6 flex justify-between items-center border-b">
+                <h1 class="text-3xl font-bold">Messages</h1>
+                <div class="flex items-center space-x-4">
+                    <button id="editMsgBtn" onclick="toggleEditMessages()" class="text-blue-500 font-medium">Edit</button>
+                    <button onclick="goHome()" class="text-blue-500 font-medium">Done</button>
                 </div>
             </div>
-            <div class="px-6 py-4 border-b bg-gray-50/50"><h1 class="text-2xl font-black text-gray-900">Busiada Portal</h1></div>
-            <div id="messageList"></div>
+            <div id="messageList" class="flex-grow overflow-y-auto p-4 space-y-4"></div>
         </div>
 
         <div class="home-indicator" onclick="goHome()"></div>
     </div>
 
     <script>
+        // Initialize Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyCvaPpq5SnJlZTDPxeuy-rc6n0g-YcfxRk",
             authDomain: "ussd254-c05af.firebaseapp.com",
@@ -330,105 +374,41 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
+        // UI Handlers
         const island = document.getElementById('island');
-        const msgBadge = document.getElementById('msgBadge');
         const messageList = document.getElementById('messageList');
-        const messageApp = document.getElementById('messageApp');
+        const msgBadge = document.getElementById('msgBadge');
         let isEditing = false;
 
-        // CLOCK - Set to Kenyan Time (EAT)
         function startClock() {
             const clockEl = document.getElementById('clock');
-            function update() {
-                // Using Intl.DateTimeFormat to force Kenya (EAT) timezone
-                const options = {
-                    timeZone: 'Africa/Nairobi',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false
-                };
-                const formatter = new Intl.DateTimeFormat([], options);
-                clockEl.textContent = formatter.format(new Date());
-            }
+            const update = () => {
+                const now = new Date();
+                clockEl.textContent = now.toLocaleTimeString('en-GB', { 
+                    timeZone: 'Africa/Nairobi', 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+            };
             setInterval(update, 1000);
             update();
         }
 
-        // SYNC
-        function syncMessages() {
-            db.collection("portal_messages").orderBy("timestamp", "desc").onSnapshot(snapshot => {
-                messageList.innerHTML = '';
-                let unreadCount = 0;
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    renderMessageUI(doc.id, data.text);
-                    if (!data.read) unreadCount++;
-                });
-                msgBadge.style.display = unreadCount > 0 ? 'flex' : 'none';
-                msgBadge.innerText = unreadCount;
-            }, (error) => console.error("Firestore Error:", error));
-        }
-
-        function renderMessageUI(id, text) {
-            const container = document.createElement('div');
-            container.className = "msg-container";
-            container.innerHTML = `
-                <div class="sender-name">PORTAL UPDATE</div>
-                <div class="msg-bubble">${text}</div>
-                <button onclick="deleteMessage('${id}')" class="delete-msg-btn">Delete Entry</button>
-            `;
-            messageList.appendChild(container);
-        }
-
-        async function saveMessage(text) {
-            await db.collection("portal_messages").add({
-                text: text,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                read: false
-            });
-            expandIsland("Portal Update Received");
-        }
-
-        async function deleteMessage(id) {
-            await db.collection("portal_messages").doc(id).delete();
-        }
-
-        async function clearAllMessages() {
-            if (!confirm("Clear all logs?")) return;
-            const snap = await db.collection("portal_messages").get();
-            const batch = db.batch();
-            snap.forEach(doc => batch.delete(doc.ref));
-            await batch.commit();
-            expandIsland("Inbox Wiped");
-        }
-
-        async function markMessagesRead() {
-            const snap = await db.collection("portal_messages").where("read", "==", false).get();
-            if (snap.empty) return;
-            const batch = db.batch();
-            snap.forEach(doc => batch.update(doc.ref, { read: true }));
-            await batch.commit();
-        }
-
-        function toggleEditMessages() {
-            isEditing = !isEditing;
-            document.getElementById('editMsgBtn').innerText = isEditing ? "Done" : "Edit";
-            messageApp.classList.toggle('editing-messages', isEditing);
-        }
-
         function expandIsland(text) {
-            island.style.width = "250px";
-            island.innerHTML = `<span class='text-[11px] text-white flex items-center justify-center h-full font-bold animate-pulse tracking-wide'>${text}</span>`;
-            setTimeout(() => { 
-                island.style.width = "110px"; 
-                island.innerHTML = ""; 
+            island.style.width = "260px";
+            island.style.height = "38px";
+            island.innerHTML = `<span class="text-[11px] text-white font-semibold animate-in fade-in duration-500">${text}</span>`;
+            setTimeout(() => {
+                island.style.width = "120px";
+                island.style.height = "32px";
+                island.innerHTML = "";
             }, 3000);
         }
 
-        function showAppView(appId) {
+        function showAppView(id) {
             document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
-            document.getElementById(appId).classList.add('active');
-            if (appId === 'messageApp') markMessagesRead();
+            document.getElementById(id).classList.add('active');
+            if (id === 'messageApp') markAllRead();
         }
 
         function goHome() {
@@ -436,95 +416,144 @@
             cancelUSSD();
         }
 
-        function openApp(name) { expandIsland(`Launching ${name}`); }
-
-        // USSD
-        let dialString = "";
-        let ussdState = "IDLE";
-        let studentData = { name: "", admission: "" };
-        const dialDisplay = document.getElementById('dial-display');
-        const ussdContainer = document.getElementById('ussd-container');
-        const ussdOverlay = document.getElementById('ussd-overlay');
-        const ussdText = document.getElementById('ussd-text');
-        const ussdInput = document.getElementById('ussd-input');
-        const ussdLoader = document.getElementById('ussd-loader');
-
-        function press(key) { dialString += key; dialDisplay.value = dialString; }
-        function backspace() { dialString = dialString.slice(0, -1); dialDisplay.value = dialString; }
-
-        function dial() {
-            if (dialString === "*254#") showMenu();
-            else if (dialString === "*255#") showDeleteMenu();
-            else if (dialString) showUSSD("The MMI code provided is invalid.", false);
+        function openApp(name) {
+            expandIsland(`Opening ${name}...`);
         }
 
-        function showUSSD(text, input = true) {
-            ussdText.innerText = text;
-            ussdInput.style.display = input ? "block" : "none";
-            ussdOverlay.classList.remove('hidden');
-            ussdContainer.classList.remove('hidden');
-            if (input) { ussdInput.value = ""; ussdInput.focus(); }
+        // Messaging Logic
+        function syncMessages() {
+            db.collection("portal_messages").orderBy("timestamp", "desc").onSnapshot(snap => {
+                messageList.innerHTML = '';
+                let unread = 0;
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    if (!data.read) unread++;
+                    renderMessage(doc.id, data.text);
+                });
+                msgBadge.style.display = unread > 0 ? 'flex' : 'none';
+                msgBadge.textContent = unread;
+            });
+        }
+
+        function renderMessage(id, text) {
+            const div = document.createElement('div');
+            div.className = "flex flex-col space-y-1";
+            div.innerHTML = `
+                <span class="text-[10px] text-gray-400 font-bold ml-2">BUSIADA PORTAL</span>
+                <div class="flex items-center space-x-3">
+                    <div class="msg-bubble shadow-sm">${text}</div>
+                    ${isEditing ? `<button onclick="deleteMsg('${id}')" class="text-red-500"><i data-lucide="minus-circle"></i></button>` : ''}
+                </div>
+            `;
+            messageList.appendChild(div);
+            lucide.createIcons();
+        }
+
+        async function markAllRead() {
+            const unread = await db.collection("portal_messages").where("read", "==", false).get();
+            const batch = db.batch();
+            unread.forEach(doc => batch.update(doc.ref, { read: true }));
+            await batch.commit();
+        }
+
+        async function deleteMsg(id) {
+            await db.collection("portal_messages").doc(id).delete();
+        }
+
+        function toggleEditMessages() {
+            isEditing = !isEditing;
+            document.getElementById('editMsgBtn').textContent = isEditing ? "Done" : "Edit";
+            syncMessages();
+        }
+
+        // USSD Logic
+        let dialString = "";
+        let ussdState = "IDLE";
+        let tempStudent = {};
+        const display = document.getElementById('dial-display');
+
+        function press(k) { dialString += k; display.value = dialString; }
+        function backspace() { dialString = dialString.slice(0, -1); display.value = dialString; }
+
+        function dial() {
+            if (dialString === "*254#") {
+                ussdState = "MENU";
+                showUSSD("Busiada Girls Management\n1. Register Student\n2. Search Record\n3. School Info\n\n0. Exit");
+            } else if (dialString === "*255#") {
+                ussdState = "DELETE_AUTH";
+                showUSSD("Admin Access\nEnter Admission to Remove:");
+            } else {
+                expandIsland("Invalid MMI Code");
+                dialString = "";
+                display.value = "";
+            }
+        }
+
+        function showUSSD(text) {
+            document.getElementById('ussd-text').innerText = text;
+            document.getElementById('ussd-overlay').classList.remove('hidden');
+            document.getElementById('ussd-container').classList.remove('hidden');
+            document.getElementById('ussd-input').value = "";
+            document.getElementById('ussd-input').focus();
         }
 
         function cancelUSSD() {
-            ussdOverlay.classList.add('hidden'); ussdContainer.classList.add('hidden');
-            ussdLoader.classList.add('hidden'); ussdState = "IDLE"; dialString = ""; dialDisplay.value = "";
-        }
-
-        function showMenu() {
-            ussdState = "MENU";
-            showUSSD(`Busiada Girls Portal\n1. Register Student\n2. Search Record\n3. Info\n\n0. Exit`);
-        }
-
-        function showDeleteMenu() {
-            ussdState = "DELETE_START";
-            showUSSD(`Busiada Admin Portal\nDelete Record\n\nEnter Admission Number:`);
+            document.getElementById('ussd-overlay').classList.add('hidden');
+            document.getElementById('ussd-container').classList.add('hidden');
+            dialString = "";
+            display.value = "";
+            ussdState = "IDLE";
         }
 
         async function handleUSSDAction() {
-            const val = ussdInput.value.trim();
+            const val = document.getElementById('ussd-input').value.trim();
             if (val === "0") return cancelUSSD();
 
             if (ussdState === "MENU") {
                 if (val === "1") { ussdState = "REG_NAME"; showUSSD("Enter Student Full Name:"); }
-                else if (val === "2") { ussdState = "SEARCH"; showUSSD("Enter Adm Number:"); }
-                else if (val === "3") showUSSD("Busiada Girls High School\nLocation: Webuye\nMotto: Excellence\n\n0. Back");
-            } else if (ussdState === "REG_NAME") {
-                studentData.name = val; ussdState = "REG_ADM"; showUSSD(`Name: ${val}\nEnter Adm No:`);
-            } else if (ussdState === "REG_ADM") {
-                studentData.admission = val;
-                toggleLoader(true);
-                await db.collection("students").add({ studentName: studentData.name, admissionNumber: studentData.admission });
-                await saveMessage(`SUCCESS: Registered ${studentData.name} (Adm: ${studentData.admission}).`);
-                toggleLoader(false);
-                showUSSD("Record saved successfully.\n\n0. Exit");
-            } else if (ussdState === "SEARCH") {
-                toggleLoader(true);
+                else if (val === "2") { ussdState = "SEARCH"; showUSSD("Enter Admission Number:"); }
+                else if (val === "3") showUSSD("Busiada Girls High School\nWebuye, Kenya\n'Excellence is our Habit'\n\n0. Back");
+            } 
+            else if (ussdState === "REG_NAME") {
+                tempStudent.name = val;
+                ussdState = "REG_ADM";
+                showUSSD(`Name: ${val}\nEnter Admission Number:`);
+            }
+            else if (ussdState === "REG_ADM") {
+                tempStudent.adm = val;
+                await db.collection("students").add({ studentName: tempStudent.name, admissionNumber: tempStudent.adm });
+                await db.collection("portal_messages").add({ 
+                    text: `Registered: ${tempStudent.name} (${tempStudent.adm})`, 
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(), 
+                    read: false 
+                });
+                expandIsland("Student Saved");
+                cancelUSSD();
+            }
+            else if (ussdState === "SEARCH") {
                 const snap = await db.collection("students").where("admissionNumber", "==", val).get();
-                toggleLoader(false);
-                if (snap.empty) showUSSD("No record found in database.\n\n0. Back");
+                if (snap.empty) showUSSD("Record not found.\n\n0. Back");
                 else showUSSD(`Found: ${snap.docs[0].data().studentName}\nAdm: ${val}\n\n0. Back`);
-            } else if (ussdState === "DELETE_START") {
-                toggleLoader(true);
+            }
+            else if (ussdState === "DELETE_AUTH") {
                 const snap = await db.collection("students").where("admissionNumber", "==", val).get();
-                if (snap.empty) { toggleLoader(false); showUSSD("Error: Record not found.\n\n0. Back"); }
+                if (snap.empty) showUSSD("Record not found.\n\n0. Back");
                 else {
                     const batch = db.batch();
-                    snap.forEach(doc => batch.delete(doc.ref));
+                    snap.forEach(d => batch.delete(d.ref));
                     await batch.commit();
-                    await saveMessage(`SYSTEM: Student Adm ${val} record has been DELETED.`);
-                    toggleLoader(false);
-                    showUSSD(`Done! Record for ${val} removed.\n\n0. Exit`);
+                    await db.collection("portal_messages").add({ 
+                        text: `DELETED: Record for Adm ${val}`, 
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp(), 
+                        read: false 
+                    });
+                    expandIsland("Record Removed");
+                    cancelUSSD();
                 }
             }
         }
 
-        function toggleLoader(show) {
-            ussdContainer.classList.toggle('hidden', show);
-            ussdLoader.classList.toggle('hidden', !show);
-        }
-
-        // Init
+        // Initialize
         startClock();
         syncMessages();
         lucide.createIcons();
