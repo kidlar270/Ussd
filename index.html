@@ -22,15 +22,6 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 
-    <!-- Firebase Modules -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        window.firebaseModules = { initializeApp, getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, getFirestore, collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc };
-    </script>
-
     <style>
         body { background: #070709; color: #e2e8f0; font-family: sans-serif; overflow: hidden; touch-action: manipulation; }
         .nexus-grid { background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.03) 1px, transparent 0); background-size: 24px 24px; }
@@ -58,6 +49,10 @@
 <div id="root"></div>
 
 <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
     // Register a dummy Service Worker to enable PWA installation
     if ('serviceWorker' in navigator) {
         const sw = 'self.addEventListener("fetch", (event) => { event.respondWith(fetch(event.request)); });';
@@ -66,9 +61,24 @@
         navigator.serviceWorker.register(url);
     }
 
-    const { initializeApp, getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, getFirestore, collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc } = window.firebaseModules;
-
-    const firebaseConfig = JSON.parse(__firebase_config);
+    const fallbackFirebaseConfig = {
+        apiKey: "AIzaSyCvaPpq5SnJlZTDPxeuy-rc6n0g-YcfxRk",
+        authDomain: "ussd254-c05af.firebaseapp.com",
+        projectId: "ussd254-c05af",
+        storageBucket: "ussd254-c05af.firebasestorage.app",
+        messagingSenderId: "807141930648",
+        appId: "1:807141930648:web:8861a029a71a2b7da502ed",
+        measurementId: "G-G3XT60YGC5"
+    };
+    const parseConfig = () => {
+        if (typeof __firebase_config === "undefined" || !__firebase_config) return fallbackFirebaseConfig;
+        try {
+            return typeof __firebase_config === "string" ? JSON.parse(__firebase_config) : __firebase_config;
+        } catch {
+            return fallbackFirebaseConfig;
+        }
+    };
+    const firebaseConfig = parseConfig();
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
