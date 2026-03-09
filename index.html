@@ -2,561 +2,251 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aura OS - Busiada Girls</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Surveillance Monitor</title>
+
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.0/lucide.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- React -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+    <!-- Firebase Modules -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        window.firebaseModules = { initializeApp, getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, getFirestore, collection, doc, onSnapshot, setDoc };
+    </script>
+
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #050505;
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            overflow: hidden;
-            touch-action: manipulation;
+        body { background: #070709; color: #e2e8f0; font-family: sans-serif; overflow: hidden; }
+        .nexus-grid { background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.03) 1px, transparent 0); background-size: 24px 24px; }
+        .glass-panel { background: rgba(15, 15, 18, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.2); border-radius: 10px; }
+        .scan-overlay::after {
+            content: ""; position: absolute; inset: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
+            background-size: 100% 3px, 3px 100%; pointer-events: none;
         }
-
-        /* Responsive Frame Logic */
-        .phone-frame {
-            width: 100%;
-            height: 100vh;
-            background: #000;
-            position: relative;
-            overflow: hidden;
-            user-select: none;
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* Desktop Mode: Mimic a floating device */
-        @media (min-width: 1024px) {
-            .phone-frame {
-                width: 400px;
-                height: 820px;
-                border-radius: 44px;
-                border: 12px solid #1a1a1a;
-                box-shadow: 0 50px 100px -20px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.1);
-            }
-            body {
-                background: radial-gradient(circle at center, #1a1a1a 0%, #050505 100%);
-            }
-        }
-
-        /* Animated Gradient Background */
-        .animated-bg {
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(-45deg, #1e1b4b, #312e81, #1e3a8a, #1e40af);
-            background-size: 400% 400%;
-            animation: gradientBG 15s ease infinite;
-            z-index: 1;
-        }
-
-        @keyframes gradientBG {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        .bg-overlay {
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at 50% -20%, rgba(255,255,255,0.1) 0%, transparent 80%);
-            z-index: 2;
-        }
-
-        .status-bar {
-            position: absolute;
-            top: 0;
-            width: 100%;
-            height: 44px;
-            padding: 0 24px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 1000;
-            font-size: 14px;
-            font-weight: 600;
-            color: white;
-        }
-
-        .dynamic-island {
-            width: 120px;
-            height: 32px;
-            background: black;
-            border-radius: 20px;
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            top: 6px;
-            transition: all 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1001;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-
-        .screen {
-            position: absolute;
-            inset: 0;
-            z-index: 10;
-        }
-
-        .home-screen {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            grid-auto-rows: min-content;
-            padding: 80px 20px 120px 20px;
-            gap: 20px;
-            height: 100%;
-            overflow-y: auto;
-        }
-
-        .app-view {
-            position: absolute;
-            inset: 0;
-            background: #ffffff;
-            z-index: 500;
-            transform: translateY(100%);
-            transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
-            padding-top: 44px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .app-view.active { transform: translateY(0); }
-
-        .app-icon {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            cursor: pointer;
-            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .app-icon:active { transform: scale(0.85); }
-
-        .icon-shape {
-            width: 64px;
-            height: 64px;
-            border-radius: 16px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 8px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-            font-size: 30px;
-            background: rgba(255,255,255,0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .badge {
-            position: absolute;
-            top: -4px;
-            right: -4px;
-            background: #ff3b30;
-            color: white;
-            font-size: 11px;
-            font-weight: bold;
-            min-width: 22px;
-            height: 22px;
-            border-radius: 11px;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid #fff;
-            padding: 0 4px;
-        }
-
-        .dock {
-            position: absolute;
-            bottom: 30px; 
-            left: 20px; 
-            right: 20px;
-            height: 88px;
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(40px);
-            -webkit-backdrop-filter: blur(40px);
-            border-radius: 32px;
-            display: flex; 
-            justify-content: space-evenly; 
-            align-items: center;
-            z-index: 20;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .home-indicator {
-            position: absolute; 
-            bottom: 10px; 
-            left: 50%;
-            transform: translateX(-50%);
-            width: 120px; 
-            height: 5px; 
-            background: rgba(255,255,255,0.5); 
-            border-radius: 10px;
-            z-index: 2000; 
-            cursor: pointer;
-        }
-
-        .ussd-modal {
-            position: absolute; 
-            top: 50%; 
-            left: 50%; 
-            transform: translate(-50%, -50%);
-            width: 90%; 
-            background: #fff; 
-            border-radius: 24px;
-            box-shadow: 0 30px 60px rgba(0,0,0,0.4); 
-            z-index: 1001; 
-            padding: 24px;
-        }
-        
-        .overlay { 
-            position: absolute; 
-            inset: 0; 
-            background: rgba(0,0,0,0.4); 
-            z-index: 1000; 
-            backdrop-filter: blur(8px); 
-        }
-
-        .msg-bubble { 
-            max-width: 85%; 
-            padding: 12px 16px; 
-            border-radius: 18px; 
-            font-size: 14px; 
-            background: #f2f2f7; 
-            color: #000;
-        }
-        
-        .dial-btn {
-            height: 70px; 
-            width: 70px; 
-            border-radius: 50%; 
-            background: #f2f2f7;
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center;
-            font-size: 24px; 
-            font-weight: 400; 
-            transition: all 0.2s;
-        }
-        .dial-btn:active { background: #d1d1d6; transform: scale(0.92); }
-        .dial-btn span { font-size: 10px; color: #8e8e93; text-transform: uppercase; }
-
-        /* Scrollbar styles for the app lists */
-        #messageList::-webkit-scrollbar { width: 0; background: transparent; }
     </style>
 </head>
 <body>
 
-    <div class="phone-frame">
-        <div class="animated-bg"></div>
-        <div class="bg-overlay"></div>
+<div id="root"></div>
 
-        <!-- Status Bar -->
-        <div class="status-bar">
-            <span id="clock" class="ml-4">--:--</span>
-            <div class="dynamic-island" id="island"></div>
-            <div class="flex items-center space-x-2 mr-4">
-                <i data-lucide="signal" class="w-4 h-4"></i>
-                <i data-lucide="wifi" class="w-4 h-4"></i>
-                <div class="w-6 h-3 border border-white rounded-sm p-px">
-                    <div class="bg-white h-full w-3/4"></div>
-                </div>
-            </div>
-        </div>
+<script type="module">
+    const { initializeApp, getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, getFirestore, collection, doc, onSnapshot, setDoc } = window.firebaseModules;
 
-        <!-- Home Screen -->
-        <div class="screen home-screen" id="homeScreen">
-            <div class="app-icon" onclick="openApp('Camera')"><div class="icon-shape">📸</div><span class="text-[12px] text-white">Camera</span></div>
-            <div class="app-icon" onclick="openApp('Photos')"><div class="icon-shape">🎨</div><span class="text-[12px] text-white">Photos</span></div>
-            <div class="app-icon" onclick="openApp('Maps')"><div class="icon-shape">📍</div><span class="text-[12px] text-white">Maps</span></div>
-            <div class="app-icon" onclick="openApp('Notes')"><div class="icon-shape">📝</div><span class="text-[12px] text-white">Notes</span></div>
-            <div class="app-icon" onclick="openApp('Files')"><div class="icon-shape">📂</div><span class="text-[12px] text-white">Files</span></div>
-            <div class="app-icon" onclick="openApp('Settings')"><div class="icon-shape">⚙️</div><span class="text-[12px] text-white">Settings</span></div>
+    // Firebase Config from your project
+    const firebaseConfig = {
+        apiKey: "AIzaSyCvaPpq5SnJlZTDPxeuy-rc6n0g-YcfxRk",
+        authDomain: "ussd254-c05af.firebaseapp.com",
+        projectId: "ussd254-c05af",
+        storageBucket: "ussd254-c05af.firebasestorage.app",
+        messagingSenderId: "807141930648",
+        appId: "1:807141930648:web:8861a029a71a2b7da502ed",
+        measurementId: "G-G3XT60YGC5"
+    };
 
-            <div class="dock">
-                <div class="app-icon" onclick="showAppView('phoneApp')">
-                    <div class="icon-shape bg-green-500 !m-0 !w-14 !h-14">📞</div>
-                </div>
-                <div class="app-icon relative" onclick="showAppView('messageApp')">
-                    <div class="icon-shape bg-blue-500 !m-0 !w-14 !h-14">💬</div>
-                    <div id="msgBadge" class="badge">0</div>
-                </div>
-                <div class="app-icon" onclick="openApp('Browser')">
-                    <div class="icon-shape bg-white !m-0 !w-14 !h-14">🌐</div>
-                </div>
-                <div class="app-icon" onclick="openApp('Music')">
-                    <div class="icon-shape bg-pink-500 !m-0 !w-14 !h-14">🎵</div>
-                </div>
-            </div>
-        </div>
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = "nexus-surveillance-v2";
 
-        <!-- Phone App -->
-        <div class="app-view" id="phoneApp">
-            <div class="p-6 flex justify-between items-center">
-                <h1 class="text-3xl font-bold">Phone</h1>
-                <button onclick="goHome()" class="text-blue-500 font-medium">Cancel</button>
-            </div>
-            <div class="flex-grow flex flex-col items-center">
-                <input type="text" id="dial-display" readonly class="text-4xl text-center w-full bg-transparent outline-none mb-8 py-4 h-20" placeholder="">
-                
-                <div class="grid grid-cols-3 gap-6 mb-8">
-                    <button onclick="press('1')" class="dial-btn">1</button>
-                    <button onclick="press('2')" class="dial-btn">2<span>ABC</span></button>
-                    <button onclick="press('3')" class="dial-btn">3<span>DEF</span></button>
-                    <button onclick="press('4')" class="dial-btn">4<span>GHI</span></button>
-                    <button onclick="press('5')" class="dial-btn">5<span>JKL</span></button>
-                    <button onclick="press('6')" class="dial-btn">6<span>MNO</span></button>
-                    <button onclick="press('7')" class="dial-btn">7<span>PQRS</span></button>
-                    <button onclick="press('8')" class="dial-btn">8<span>TUV</span></button>
-                    <button onclick="press('9')" class="dial-btn">9<span>WXYZ</span></button>
-                    <button onclick="press('*')" class="dial-btn">*</button>
-                    <button onclick="press('0')" class="dial-btn">0<span>+</span></button>
-                    <button onclick="press('#')" class="dial-btn">#</button>
-                </div>
+    const { useState, useEffect, useMemo } = React;
 
-                <div class="flex items-center space-x-12">
-                    <div class="w-12"></div>
-                    <button onclick="dial()" class="h-16 w-16 bg-green-500 rounded-full flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform">
-                        <i data-lucide="phone" class="fill-current w-8 h-8"></i>
-                    </button>
-                    <button onclick="backspace()" class="w-12 text-gray-400 active:text-black">
-                        <i data-lucide="delete"></i>
-                    </button>
-                </div>
-            </div>
+    function App() {
+        const [user, setUser] = useState(null);
+        const [devices, setDevices] = useState({});
+        const [selectedId, setSelectedId] = useState(null);
+        const [isModalOpen, setIsModalOpen] = useState(false);
+        const [form, setForm] = useState({ name: '', addr: '' });
+        const [quickAddr, setQuickAddr] = useState("");
 
-            <!-- USSD UI -->
-            <div id="ussd-overlay" class="overlay hidden"></div>
-            <div id="ussd-container" class="ussd-modal hidden">
-                <p id="ussd-text" class="text-sm font-medium text-gray-700 mb-6 leading-relaxed"></p>
-                <input type="text" id="ussd-input" class="w-full border-b-2 border-blue-500 py-2 text-xl font-bold mb-6 outline-none">
-                <div class="flex justify-end space-x-6">
-                    <button onclick="cancelUSSD()" class="text-gray-400 font-bold">CANCEL</button>
-                    <button onclick="handleUSSDAction()" class="text-blue-600 font-bold">SEND</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Messages App -->
-        <div class="app-view" id="messageApp">
-            <div class="p-6 flex justify-between items-center border-b">
-                <h1 class="text-3xl font-bold">Messages</h1>
-                <div class="flex items-center space-x-4">
-                    <button id="editMsgBtn" onclick="toggleEditMessages()" class="text-blue-500 font-medium">Edit</button>
-                    <button onclick="goHome()" class="text-blue-500 font-medium">Done</button>
-                </div>
-            </div>
-            <div id="messageList" class="flex-grow overflow-y-auto p-4 space-y-4"></div>
-        </div>
-
-        <div class="home-indicator" onclick="goHome()"></div>
-    </div>
-
-    <script>
-        // Initialize Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyCvaPpq5SnJlZTDPxeuy-rc6n0g-YcfxRk",
-            authDomain: "ussd254-c05af.firebaseapp.com",
-            projectId: "ussd254-c05af",
-            storageBucket: "ussd254-c05af.firebasestorage.app",
-            messagingSenderId: "807141930648",
-            appId: "1:807141930648:web:8861a029a71a2b7da502ed"
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
-        // UI Handlers
-        const island = document.getElementById('island');
-        const messageList = document.getElementById('messageList');
-        const msgBadge = document.getElementById('msgBadge');
-        let isEditing = false;
-
-        function startClock() {
-            const clockEl = document.getElementById('clock');
-            const update = () => {
-                const now = new Date();
-                clockEl.textContent = now.toLocaleTimeString('en-GB', { 
-                    timeZone: 'Africa/Nairobi', 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                });
-            };
-            setInterval(update, 1000);
-            update();
-        }
-
-        function expandIsland(text) {
-            island.style.width = "260px";
-            island.style.height = "38px";
-            island.innerHTML = `<span class="text-[11px] text-white font-semibold animate-in fade-in duration-500">${text}</span>`;
-            setTimeout(() => {
-                island.style.width = "120px";
-                island.style.height = "32px";
-                island.innerHTML = "";
-            }, 3000);
-        }
-
-        function showAppView(id) {
-            document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-            if (id === 'messageApp') markAllRead();
-        }
-
-        function goHome() {
-            document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
-            cancelUSSD();
-        }
-
-        function openApp(name) {
-            expandIsland(`Opening ${name}...`);
-        }
-
-        // Messaging Logic
-        function syncMessages() {
-            db.collection("portal_messages").orderBy("timestamp", "desc").onSnapshot(snap => {
-                messageList.innerHTML = '';
-                let unread = 0;
-                snap.forEach(doc => {
-                    const data = doc.data();
-                    if (!data.read) unread++;
-                    renderMessage(doc.id, data.text);
-                });
-                msgBadge.style.display = unread > 0 ? 'flex' : 'none';
-                msgBadge.textContent = unread;
-            });
-        }
-
-        function renderMessage(id, text) {
-            const div = document.createElement('div');
-            div.className = "flex flex-col space-y-1";
-            div.innerHTML = `
-                <span class="text-[10px] text-gray-400 font-bold ml-2">BUSIADA PORTAL</span>
-                <div class="flex items-center space-x-3">
-                    <div class="msg-bubble shadow-sm">${text}</div>
-                    ${isEditing ? `<button onclick="deleteMsg('${id}')" class="text-red-500"><i data-lucide="minus-circle"></i></button>` : ''}
-                </div>
-            `;
-            messageList.appendChild(div);
-            lucide.createIcons();
-        }
-
-        async function markAllRead() {
-            const unread = await db.collection("portal_messages").where("read", "==", false).get();
-            const batch = db.batch();
-            unread.forEach(doc => batch.update(doc.ref, { read: true }));
-            await batch.commit();
-        }
-
-        async function deleteMsg(id) {
-            await db.collection("portal_messages").doc(id).delete();
-        }
-
-        function toggleEditMessages() {
-            isEditing = !isEditing;
-            document.getElementById('editMsgBtn').textContent = isEditing ? "Done" : "Edit";
-            syncMessages();
-        }
-
-        // USSD Logic
-        let dialString = "";
-        let ussdState = "IDLE";
-        let tempStudent = {};
-        const display = document.getElementById('dial-display');
-
-        function press(k) { dialString += k; display.value = dialString; }
-        function backspace() { dialString = dialString.slice(0, -1); display.value = dialString; }
-
-        function dial() {
-            if (dialString === "*254#") {
-                ussdState = "MENU";
-                showUSSD("Busiada Girls Management\n1. Register Student\n2. Search Record\n3. School Info\n\n0. Exit");
-            } else if (dialString === "*255#") {
-                ussdState = "DELETE_AUTH";
-                showUSSD("Admin Access\nEnter Admission to Remove:");
-            } else {
-                expandIsland("Invalid MMI Code");
-                dialString = "";
-                display.value = "";
-            }
-        }
-
-        function showUSSD(text) {
-            document.getElementById('ussd-text').innerText = text;
-            document.getElementById('ussd-overlay').classList.remove('hidden');
-            document.getElementById('ussd-container').classList.remove('hidden');
-            document.getElementById('ussd-input').value = "";
-            document.getElementById('ussd-input').focus();
-        }
-
-        function cancelUSSD() {
-            document.getElementById('ussd-overlay').classList.add('hidden');
-            document.getElementById('ussd-container').classList.add('hidden');
-            dialString = "";
-            display.value = "";
-            ussdState = "IDLE";
-        }
-
-        async function handleUSSDAction() {
-            const val = document.getElementById('ussd-input').value.trim();
-            if (val === "0") return cancelUSSD();
-
-            if (ussdState === "MENU") {
-                if (val === "1") { ussdState = "REG_NAME"; showUSSD("Enter Student Full Name:"); }
-                else if (val === "2") { ussdState = "SEARCH"; showUSSD("Enter Admission Number:"); }
-                else if (val === "3") showUSSD("Busiada Girls High School\nWebuye, Kenya\n'Excellence is our Habit'\n\n0. Back");
-            } 
-            else if (ussdState === "REG_NAME") {
-                tempStudent.name = val;
-                ussdState = "REG_ADM";
-                showUSSD(`Name: ${val}\nEnter Admission Number:`);
-            }
-            else if (ussdState === "REG_ADM") {
-                tempStudent.adm = val;
-                await db.collection("students").add({ studentName: tempStudent.name, admissionNumber: tempStudent.adm });
-                await db.collection("portal_messages").add({ 
-                    text: `Registered: ${tempStudent.name} (${tempStudent.adm})`, 
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp(), 
-                    read: false 
-                });
-                expandIsland("Student Saved");
-                cancelUSSD();
-            }
-            else if (ussdState === "SEARCH") {
-                const snap = await db.collection("students").where("admissionNumber", "==", val).get();
-                if (snap.empty) showUSSD("Record not found.\n\n0. Back");
-                else showUSSD(`Found: ${snap.docs[0].data().studentName}\nAdm: ${val}\n\n0. Back`);
-            }
-            else if (ussdState === "DELETE_AUTH") {
-                const snap = await db.collection("students").where("admissionNumber", "==", val).get();
-                if (snap.empty) showUSSD("Record not found.\n\n0. Back");
-                else {
-                    const batch = db.batch();
-                    snap.forEach(d => batch.delete(d.ref));
-                    await batch.commit();
-                    await db.collection("portal_messages").add({ 
-                        text: `DELETED: Record for Adm ${val}`, 
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp(), 
-                        read: false 
-                    });
-                    expandIsland("Record Removed");
-                    cancelUSSD();
+        // Auth Logic (Rule 3)
+        useEffect(() => {
+            const initAuth = async () => {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
                 }
-            }
-        }
+            };
+            initAuth();
+            const unsubscribe = onAuthStateChanged(auth, setUser);
+            return () => unsubscribe();
+        }, []);
 
-        // Initialize
-        startClock();
-        syncMessages();
-        lucide.createIcons();
-    </script>
+        // Real-time Firestore Listeners (Rule 1 & 2)
+        useEffect(() => {
+            if (!user) return;
+            const ref = collection(db, 'artifacts', appId, 'public', 'data', 'devices');
+            const unsubscribe = onSnapshot(ref, (snap) => {
+                let d = {};
+                snap.forEach(doc => d[doc.id] = doc.data());
+                setDevices(d);
+            }, (err) => console.error("Firestore error:", err));
+            return () => unsubscribe();
+        }, [user]);
+
+        useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [devices, selectedId]);
+
+        const addDevice = async (id, name = "UNNAMED NODE") => {
+            if (!id || !user) return;
+            const deviceId = id.toUpperCase().trim();
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'devices', deviceId), {
+                name: name,
+                cpu: 0,
+                ram: 0,
+                lastSeen: new Date().toISOString(),
+                screenBuffer: ""
+            }, { merge: true });
+            setQuickAddr("");
+            setForm({ name: '', addr: '' });
+            setIsModalOpen(false);
+        };
+
+        const downloadAgent = () => {
+            if (!selectedId || !user) return;
+            const projectId = firebaseConfig.projectId;
+            const dbPath = `projects/${projectId}/databases/(default)/documents/artifacts/${appId}/public/data/devices/${selectedId}`;
+            const restUrl = `https://firestore.googleapis.com/v1/${dbPath}?updateMask.fieldPaths=cpu&updateMask.fieldPaths=ram&updateMask.fieldPaths=lastSeen&updateMask.fieldPaths=screenBuffer`;
+
+            const script = `import time, psutil, requests, base64, io\nfrom PIL import ImageGrab\nfrom datetime import datetime\n\nNODE = "${selectedId}"\nURL = "${restUrl}"\n\ndef get_screen():\n    try:\n        img = ImageGrab.grab()\n        img.thumbnail((800, 450))\n        buf = io.BytesIO()\n        img.save(buf, format="JPEG", quality=25)\n        return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()\n    except: return ""\n\nwhile True:\n    try:\n        payload = {"fields": {\n            "cpu": {"integerValue": int(psutil.cpu_percent())},\n            "ram": {"integerValue": int(psutil.virtual_memory().percent)},\n            "lastSeen": {"timestampValue": datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')},\n            "screenBuffer": {"stringValue": get_screen()}\n        }}\n        requests.patch(URL, json=payload, timeout=5)\n        time.sleep(5)\n    except: time.sleep(15)`;
+
+            const blob = new Blob([script], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `nexus-agent-${selectedId}.pyw`;
+            a.click();
+        };
+
+        const selectedDevice = devices[selectedId];
+        const isOnline = useMemo(() => {
+            if (!selectedDevice?.lastSeen) return false;
+            const lastVal = selectedDevice.lastSeen;
+            const ts = lastVal?.seconds ? lastVal.seconds * 1000 : new Date(lastVal).getTime();
+            return (Date.now() - ts) < 35000;
+        }, [selectedDevice]);
+
+        return React.createElement("div", { className: "h-screen w-full flex flex-col md:flex-row" },
+            // Sidebar Navigation
+            React.createElement("nav", { className: "w-full h-16 md:h-full md:w-20 glass-panel flex md:flex-col items-center justify-around md:justify-start py-0 md:py-8 gap-0 md:gap-8 z-50 order-last md:order-first" },
+                React.createElement("div", { className: "hidden md:flex w-12 h-12 bg-blue-600 rounded-2xl items-center justify-center shadow-lg" },
+                    React.createElement("i", { "data-lucide": "eye", className: "text-white w-6 h-6" })
+                ),
+                React.createElement("button", { className: "text-blue-400 p-3" }, React.createElement("i", { "data-lucide": "layout-grid" })),
+                React.createElement("button", { onClick: () => setIsModalOpen(true), className: "text-slate-500 hover:text-white p-3" }, React.createElement("i", { "data-lucide": "plus-circle" }))
+            ),
+
+            // Devices List
+            React.createElement("aside", { className: "w-full md:w-80 border-r border-white/5 bg-[#070709] nexus-grid flex flex-col shrink-0" },
+                React.createElement("div", { className: "p-8" },
+                    React.createElement("h2", { className: "text-[10px] font-black text-blue-500 tracking-widest uppercase mb-4" }, "Infrastructure"),
+                    React.createElement("div", { className: "p-1 bg-white/5 border border-white/10 rounded-2xl flex gap-1" },
+                        React.createElement("input", {
+                            placeholder: "HW-ID",
+                            className: "flex-1 bg-black/40 border-none rounded-xl px-4 py-2 text-xs font-mono uppercase focus:ring-0 outline-none text-white",
+                            value: quickAddr,
+                            onChange: e => setQuickAddr(e.target.value)
+                        }),
+                        React.createElement("button", { 
+                            onClick: () => addDevice(quickAddr),
+                            className: "px-3 bg-blue-600 text-white rounded-xl" 
+                        }, React.createElement("i", { "data-lucide": "plus", className: "w-4 h-4" }))
+                    )
+                ),
+                React.createElement("div", { className: "flex-1 overflow-y-auto px-6 space-y-2 custom-scrollbar" },
+                    Object.entries(devices).map(([id, data]) => {
+                        const deviceOnline = data.lastSeen ? (Date.now() - (data.lastSeen?.seconds ? data.lastSeen.seconds * 1000 : new Date(data.lastSeen).getTime())) < 35000 : false;
+                        return React.createElement("div", {
+                            key: id,
+                            onClick: () => setSelectedId(id),
+                            className: `p-4 rounded-xl border cursor-pointer transition-all ${selectedId === id ? 'bg-blue-600/10 border-blue-500/40' : 'bg-white/5 border-transparent'}`
+                        },
+                            React.createElement("div", { className: "flex justify-between items-center" },
+                                React.createElement("div", null,
+                                    React.createElement("div", { className: "text-xs font-bold text-white uppercase" }, data.name),
+                                    React.createElement("div", { className: "text-[9px] font-mono text-slate-500" }, id)
+                                ),
+                                React.createElement("div", { className: `w-2 h-2 rounded-full ${deviceOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-700'}` })
+                            )
+                        );
+                    })
+                )
+            ),
+
+            // Monitoring Viewport
+            React.createElement("main", { className: "flex-1 flex flex-col bg-[#020203] relative overflow-hidden" },
+                !selectedId ? React.createElement("div", { className: "flex-1 flex items-center justify-center text-slate-700 text-[10px] font-black uppercase tracking-widest" }, "Select Node to Monitor") :
+                React.createElement(React.Fragment, null,
+                    React.createElement("header", { className: "h-20 px-10 flex items-center justify-between glass-panel z-20" },
+                        React.createElement("div", null,
+                            React.createElement("div", { className: "text-white font-black uppercase" }, selectedDevice.name),
+                            React.createElement("div", { className: `text-[10px] font-black uppercase ${isOnline ? 'text-emerald-500' : 'text-amber-500'}` }, isOnline ? 'Streaming Live' : 'Signal Lost')
+                        ),
+                        React.createElement("button", { onClick: downloadAgent, className: "bg-blue-600 px-6 py-2 rounded-xl text-[10px] font-black text-white uppercase" }, "Deploy Agent")
+                    ),
+                    React.createElement("div", { className: "flex-1 p-10 space-y-6 overflow-y-auto custom-scrollbar" },
+                        React.createElement("div", { className: "grid grid-cols-2 gap-4" },
+                            React.createElement("div", { className: "glass-panel p-6 rounded-3xl" },
+                                React.createElement("div", { className: "text-[10px] font-bold text-slate-500 uppercase mb-2" }, "CPU Load"),
+                                React.createElement("div", { className: "text-3xl font-mono font-black" }, selectedDevice.cpu || 0, "%")
+                            ),
+                            React.createElement("div", { className: "glass-panel p-6 rounded-3xl" },
+                                React.createElement("div", { className: "text-[10px] font-bold text-slate-500 uppercase mb-2" }, "RAM Utilization"),
+                                React.createElement("div", { className: "text-3xl font-mono font-black" }, selectedDevice.ram || 0, "%")
+                            )
+                        ),
+                        React.createElement("div", { className: "aspect-video bg-black rounded-[2rem] border border-white/5 overflow-hidden relative scan-overlay flex items-center justify-center shadow-2xl" },
+                            isOnline && selectedDevice.screenBuffer ? 
+                            React.createElement("img", { src: selectedDevice.screenBuffer, className: "w-full h-full object-contain" }) :
+                            React.createElement("div", { className: "text-center opacity-20" },
+                                React.createElement("i", { "data-lucide": "wifi-off", className: "w-12 h-12 mx-auto mb-2" }),
+                                React.createElement("div", { className: "text-[10px] font-black uppercase" }, "No Video Feed")
+                            )
+                        )
+                    )
+                )
+            ),
+
+            // Modal
+            isModalOpen && React.createElement("div", { className: "fixed inset-0 bg-black/90 backdrop-blur-sm z-[100] flex items-center justify-center" },
+                React.createElement("div", { className: "bg-[#0f0f12] p-10 rounded-[2.5rem] border border-white/10 w-full max-w-md" },
+                    React.createElement("h3", { className: "text-xl font-black text-white uppercase mb-6" }, "Register New Node"),
+                    React.createElement("div", { className: "space-y-4" },
+                        React.createElement("input", { 
+                            placeholder: "NAME (e.g. LAPTOP-01)", 
+                            value: form.name,
+                            onChange: e => setForm({...form, name: e.target.value}),
+                            className: "w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white outline-none"
+                        }),
+                        React.createElement("input", { 
+                            placeholder: "HW-ID", 
+                            value: form.addr,
+                            onChange: e => setForm({...form, addr: e.target.value}),
+                            className: "w-full bg-black border border-white/10 rounded-xl p-4 text-blue-500 font-mono"
+                        }),
+                        React.createElement("button", { 
+                            onClick: () => addDevice(form.addr, form.name),
+                            className: "w-full bg-blue-600 py-4 rounded-xl font-black text-white uppercase"
+                        }, "Initialize")
+                    )
+                )
+            )
+        );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+
 </body>
 </html>
