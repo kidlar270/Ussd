@@ -42,6 +42,8 @@
             display: flex; align-items: center; justify-content: center;
         }
         .video-container:fullscreen img { max-height: 100vh; width: auto; }
+        
+        .image-render { image-rendering: -webkit-optimize-contrast; transition: opacity 0.2s ease-in-out; }
     </style>
 </head>
 <body>
@@ -53,7 +55,6 @@
     import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // Register a dummy Service Worker to enable PWA installation
     if ('serviceWorker' in navigator) {
         const sw = 'self.addEventListener("fetch", (event) => { event.respondWith(fetch(event.request)); });';
         const blob = new Blob([sw], { type: 'text/javascript' });
@@ -94,9 +95,14 @@
         const [form, setForm] = useState({ name: '', addr: '' });
         const [quickAddr, setQuickAddr] = useState("");
         const [isBroadcasting, setIsBroadcasting] = useState(false);
+        const [isScreencasting, setIsScreencasting] = useState(false);
+        
         const broadcastInterval = useRef(null);
         const activeStream = useRef(null);
         const videoRef = useRef(null);
+        
+        // Anti-buffer state: Keep track of the last valid image to prevent flickering
+        const [lastValidBuffer, setLastValidBuffer] = useState("");
 
         useEffect(() => {
             const initAuth = async () => {
@@ -122,7 +128,103 @@
             return () => unsubscribe();
         }, [user]);
 
+        // When a new image arrives, update the "smooth" buffer
+        useEffect(() => {
+            if (devices[selectedId]?.screenBuffer) {
+                setLastValidBuffer(devices[selectedId].screenBuffer);
+            }
+        }, [devices, selectedId]);
+
         useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [devices, selectedId, isBroadcasting]);
+
+        const stopAllBroadcasts = () => {
+            if (broadcastInterval.current) clearInterval(broadcastInterval.current);
+            if (activeStream.current) {
+                activeStream.current.getTracks().forEach(track => track.stop());
+                activeStream.current = null;
+            }
+            setIsBroadcasting(false);
+            setIsScreencasting(false);
+        };
+
+        const toggleBroadcast = async (mode = 'screen') => {
+            if (isBroadcasting) {
+                stopAllBroadcasts();
+                return;
+            }
+
+            try {
+                let stream;
+                if (mode === 'screen' && navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+                    try { 
+                        stream = await navigator.mediaDevices.getDisplayMedia({ 
+                            video: { 
+                                cursor: "always", 
+                                frameRate: { ideal: 10, max: 15 },
+                                width: { max: 1024 }
+                            },
+                            audio: false 
+                        }); 
+                        setIsScreencasting(true);
+                    } catch (e) { console.warn("Screen capture rejected"); }
+                }
+
+                if (!stream) {
+                    stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { facingMode: "user", width: { ideal: 640 } } 
+                    });
+                    setIsScreencasting(false);
+                }
+
+                activeStream.current = stream;
+                const videoElement = document.createElement('video');
+                videoElement.srcObject = stream;
+                videoElement.muted = true;
+                videoElement.playsInline = true;
+                await videoElement.play();
+
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                setIsBroadcasting(true);
+
+                // Optimization: Capture every 1.5 seconds but with higher compression for "fluidity"
+                broadcastInterval.current = setInterval(async () => {
+                    const currentId = window._selectedId; 
+                    if (!currentId || !auth.currentUser) return;
+                    
+                    // Fixed resolution for better buffering performance
+                    const targetWidth = 800; 
+                    const ratio = videoElement.videoHeight / videoElement.videoWidth;
+                    canvas.width = targetWidth;
+                    canvas.height = targetWidth * ratio;
+                    
+                    ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                    
+                    // 0.5 quality significantly reduces data size/buffering time
+                    const base64 = canvas.toDataURL('image/jpeg', 0.5);
+                    
+                    try {
+                        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'devices', currentId), {
+                            screenBuffer: base64,
+                            lastSeen: new Date().toISOString(),
+                            cpu: Math.floor(Math.random() * 20) + 5,
+                            ram: Math.floor(Math.random() * 15) + 40,
+                            mode: (mode === 'screen') ? 'SCREENTRACK' : 'CAMTRACK'
+                        });
+                    } catch (err) {
+                        console.error("Broadcast write error:", err);
+                    }
+                }, 1500); 
+
+                stream.getTracks()[0].onended = () => stopAllBroadcasts();
+
+            } catch (err) {
+                console.error("Transmission failed:", err);
+                stopAllBroadcasts();
+            }
+        };
+
+        useEffect(() => { window._selectedId = selectedId; }, [selectedId]);
 
         const addDevice = async (id, name = "UNNAMED NODE") => {
             if (!id || !user) return;
@@ -133,17 +235,13 @@
                 lastSeen: new Date().toISOString(),
                 screenBuffer: ""
             }, { merge: true });
+            
             setQuickAddr("");
             setForm({ name: '', addr: '' });
             setIsModalOpen(false);
             setSelectedId(deviceId);
-        };
-
-        const removeDevice = async (e, id) => {
-            e.stopPropagation();
-            if (!user || !id) return;
-            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'devices', id));
-            if (selectedId === id) setSelectedId(null);
+            
+            setTimeout(() => toggleBroadcast('screen'), 800);
         };
 
         const handleFullscreen = () => {
@@ -152,75 +250,11 @@
             else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
         };
 
-        const toggleBroadcast = async () => {
-            if (isBroadcasting) {
-                if (broadcastInterval.current) clearInterval(broadcastInterval.current);
-                if (activeStream.current) activeStream.current.getTracks().forEach(track => track.stop());
-                setIsBroadcasting(false);
-                return;
-            }
-
-            try {
-                let stream;
-                // Desktop Screen Capture
-                if (navigator.mediaDevices.getDisplayMedia) {
-                    try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 15, width: 1280 } }); } 
-                    catch (e) { console.log("Screen capture rejected"); }
-                }
-
-                // Mobile/Desktop Camera Fallback
-                if (!stream) {
-                    stream = await navigator.mediaDevices.getUserMedia({ 
-                        video: { facingMode: "user", width: { ideal: 1280 } } 
-                    });
-                }
-
-                activeStream.current = stream;
-                const video = document.createElement('video');
-                video.srcObject = stream;
-                video.muted = true;
-                video.playsInline = true;
-                await video.play();
-
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                setIsBroadcasting(true);
-
-                broadcastInterval.current = setInterval(async () => {
-                    if (!selectedId || !user) return;
-                    const targetWidth = 1280; 
-                    const ratio = video.videoHeight / video.videoWidth;
-                    canvas.width = targetWidth;
-                    canvas.height = targetWidth * ratio;
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    
-                    // High-quality JPEG for clarity
-                    const base64 = canvas.toDataURL('image/jpeg', 0.85);
-                    
-                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'devices', selectedId), {
-                        screenBuffer: base64,
-                        lastSeen: new Date().toISOString(),
-                        cpu: Math.floor(Math.random() * 20),
-                        ram: Math.floor(Math.random() * 30) + 10
-                    });
-                }, 2500); // 2.5s interval for better smoothness
-
-                stream.getTracks()[0].onended = () => {
-                    if (broadcastInterval.current) clearInterval(broadcastInterval.current);
-                    setIsBroadcasting(false);
-                };
-
-            } catch (err) {
-                console.error("Broadcast failed:", err);
-                setIsBroadcasting(false);
-            }
-        };
-
         const selectedDevice = devices[selectedId];
         const isOnline = useMemo(() => {
             if (!selectedDevice?.lastSeen) return false;
             const ts = new Date(selectedDevice.lastSeen).getTime();
-            return (Date.now() - ts) < 40000;
+            return (Date.now() - ts) < 30000; // Tighter 30s window for "Live" status
         }, [selectedDevice]);
 
         return React.createElement("div", { className: "main-container w-full flex flex-col md:flex-row" },
@@ -249,7 +283,7 @@
                 ),
                 React.createElement("div", { className: "flex-1 overflow-y-auto px-6 pb-24 space-y-2 custom-scrollbar" },
                     Object.entries(devices).map(([id, data]) => {
-                        const deviceOnline = (Date.now() - new Date(data.lastSeen).getTime()) < 40000;
+                        const deviceOnline = (Date.now() - new Date(data.lastSeen).getTime()) < 30000;
                         return React.createElement("div", {
                             key: id,
                             onClick: () => setSelectedId(id),
@@ -278,16 +312,27 @@
                         React.createElement("div", { className: "flex items-center gap-4" },
                             React.createElement("button", { onClick: () => setSelectedId(null), className: "md:hidden text-white" }, React.createElement("i", { "data-lucide": "arrow-left" })),
                             React.createElement("div", null,
-                                React.createElement("div", { className: "text-white text-sm font-black uppercase" }, selectedDevice.name),
-                                React.createElement("div", { className: `text-[10px] font-black uppercase ${isOnline ? 'text-emerald-500' : 'text-amber-500'}` }, isOnline ? 'Connected' : 'Offline')
+                                React.createElement("div", { className: "text-white text-sm font-black uppercase" }, selectedDevice?.name || selectedId),
+                                React.createElement("div", { className: `text-[10px] font-black uppercase tracking-widest ${isOnline ? 'text-emerald-500' : 'text-amber-500'}` }, 
+                                    isOnline ? (selectedDevice?.mode || 'Active') : 'Offline'
+                                )
                             )
                         ),
-                        React.createElement("button", { 
-                            onClick: toggleBroadcast,
-                            className: `px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 border transition-all ${isBroadcasting ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'}`
-                        }, 
-                            React.createElement("i", { "data-lucide": "radio", className: isBroadcasting ? "animate-pulse" : "" }),
-                            isBroadcasting ? "Stop" : "Broadcast"
+                        React.createElement("div", { className: "flex gap-2" },
+                            React.createElement("button", { 
+                                onClick: () => toggleBroadcast('screen'),
+                                className: `px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 border transition-all ${isBroadcasting && isScreencasting ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-blue-500/10 border-blue-500/20 text-blue-500'}`
+                            }, 
+                                React.createElement("i", { "data-lucide": "monitor", className: isBroadcasting && isScreencasting ? "animate-pulse" : "" }),
+                                isBroadcasting && isScreencasting ? "Stop Cast" : "Screencast"
+                            ),
+                            React.createElement("button", { 
+                                onClick: () => toggleBroadcast('camera'),
+                                className: `hidden md:flex px-4 py-2 rounded-xl text-[10px] font-black uppercase items-center gap-2 border transition-all ${isBroadcasting && !isScreencasting ? 'bg-red-500/10 border-red-500 text-red-500' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'}`
+                            }, 
+                                React.createElement("i", { "data-lucide": "camera", className: isBroadcasting && !isScreencasting ? "animate-pulse" : "" }),
+                                isBroadcasting && !isScreencasting ? "Stop Cam" : "Camera"
+                            )
                         )
                     ),
 
@@ -295,14 +340,17 @@
                         React.createElement("div", { className: "grid grid-cols-2 gap-4" },
                             ["CPU", "RAM"].map((label, i) => React.createElement("div", { key: label, className: "glass-panel p-4 rounded-2xl" },
                                 React.createElement("div", { className: "text-[9px] font-bold text-slate-500 uppercase mb-1" }, label),
-                                React.createElement("div", { className: "text-xl font-mono font-black" }, i === 0 ? selectedDevice.cpu : selectedDevice.ram, "%")
+                                React.createElement("div", { className: "text-xl font-mono font-black" }, i === 0 ? (selectedDevice.cpu || 0) : (selectedDevice.ram || 0), "%")
                             ))
                         ),
 
-                        React.createElement("div", { ref: videoRef, className: "video-container relative aspect-video bg-black rounded-3xl border border-white/5 overflow-hidden scan-overlay flex items-center justify-center group" },
-                            isOnline && selectedDevice.screenBuffer ? 
+                        React.createElement("div", { ref: videoRef, className: "video-container relative aspect-video bg-black rounded-3xl border border-white/5 overflow-hidden scan-overlay flex items-center justify-center group shadow-2xl" },
+                            isOnline && lastValidBuffer ? 
                             React.createElement(React.Fragment, null,
-                                React.createElement("img", { src: selectedDevice.screenBuffer, className: "w-full h-full object-contain" }),
+                                React.createElement("img", { 
+                                    src: lastValidBuffer, 
+                                    className: "image-render w-full h-full object-contain" 
+                                }),
                                 React.createElement("button", { 
                                     onClick: handleFullscreen,
                                     className: "absolute bottom-4 right-4 bg-black/60 p-3 rounded-xl border border-white/10 text-white opacity-0 group-hover:opacity-100 transition-opacity"
@@ -310,7 +358,13 @@
                             ) :
                             React.createElement("div", { className: "text-center opacity-30" },
                                 React.createElement("i", { "data-lucide": "loader", className: "w-8 h-8 mx-auto mb-2 animate-spin" }),
-                                React.createElement("div", { className: "text-[9px] font-black uppercase" }, "Awaiting Signal...")
+                                React.createElement("div", { className: "text-[9px] font-black uppercase" }, isOnline ? "Optimizing Signal..." : "Awaiting Signal...")
+                            )
+                        ),
+                        
+                        isBroadcasting && React.createElement("div", { className: "p-4 glass-panel rounded-2xl border-blue-500/30 text-center" },
+                            React.createElement("p", { className: "text-[10px] font-bold text-blue-400 uppercase animate-pulse" }, 
+                                isScreencasting ? "Low-Latency Screencast: Feed optimization active" : "Camera Track: Compressed for performance"
                             )
                         )
                     )
@@ -319,20 +373,20 @@
 
             // Registration Modal
             isModalOpen && React.createElement("div", { className: "fixed inset-0 bg-black/90 backdrop-blur-md z-[100] flex items-center justify-center p-6" },
-                React.createElement("div", { className: "bg-[#0f0f12] p-8 rounded-[2rem] border border-white/10 w-full max-w-md" },
+                React.createElement("div", { className: "bg-[#0f0f12] p-8 rounded-[2rem] border border-white/10 w-full max-w-md shadow-2xl" },
                     React.createElement("h3", { className: "text-lg font-black text-white uppercase mb-6" }, "New Node Registration"),
                     React.createElement("div", { className: "space-y-4" },
                         React.createElement("input", { 
                             placeholder: "DEVICE NAME", 
                             value: form.name,
                             onChange: e => setForm({...form, name: e.target.value}),
-                            className: "w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white uppercase font-bold"
+                            className: "w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white uppercase font-bold outline-none focus:border-blue-500"
                         }),
                         React.createElement("input", { 
                             placeholder: "UNIQUE ID", 
                             value: form.addr,
                             onChange: e => setForm({...form, addr: e.target.value}),
-                            className: "w-full bg-black border border-white/10 rounded-xl p-4 text-blue-500 font-mono uppercase"
+                            className: "w-full bg-black border border-white/10 rounded-xl p-4 text-blue-500 font-mono uppercase outline-none focus:border-blue-500"
                         }),
                         React.createElement("div", { className: "flex gap-2" },
                             React.createElement("button", { onClick: () => setIsModalOpen(false), className: "flex-1 py-4 text-slate-500 uppercase text-[10px] font-black" }, "Cancel"),
